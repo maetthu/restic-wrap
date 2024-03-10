@@ -1,2 +1,3 @@
 # restic-wrap
-Just my restic wrapper script to ease backup/restore 
+
+Just a thin restic wrapper to ease backup/restore. 
