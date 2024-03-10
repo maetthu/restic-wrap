@@ -28,12 +28,26 @@ var backupCmd = &cobra.Command{
 	Use:   "backup -p <path-to-profile.yaml> [flags]",
 	Short: "Executes configured backup stages for all backends",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config := zap.NewProductionConfig()
-		config.DisableStacktrace = true
-		logger, _ := config.Build()
-		defer logger.Sync()
+		profilePath, err := cmd.Flags().GetString("profile")
 
-		sugar := logger.Sugar().WithOptions()
+		if err != nil {
+			return err
+		}
+
+		prof, err := initConfig(profilePath)
+
+		if err != nil {
+			return err
+		}
+
+		zc := zap.NewProductionConfig()
+		zc.DisableStacktrace = true
+		logger, _ := zc.Build()
+		defer func() {
+			_ = logger.Sync()
+		}()
+
+		sugar := logger.Sugar()
 
 		logWriterInfo := LogWriter{
 			Logger: sugar,
@@ -49,7 +63,7 @@ var backupCmd = &cobra.Command{
 
 		run := func(b *profile.Backend, args []string) error {
 			r := exec.Command("restic", args...)
-			r.Env = Profile.BuildEnv(b)
+			r.Env = prof.BuildEnv(b)
 			r.Stdout = logWriterInfo
 			r.Stderr = logWriterError
 
@@ -58,9 +72,9 @@ var backupCmd = &cobra.Command{
 		}
 
 		notify := func(b *profile.Backend, stage string, level string, msg string) error {
-			for _, command := range Profile.Notify {
+			for _, command := range prof.Notify {
 				n := exec.Command(command, b.Name, stage, level, msg)
-				n.Env = Profile.BuildEnv(b)
+				n.Env = prof.BuildEnv(b)
 				n.Stdout = logWriterInfo
 				n.Stderr = logWriterError
 
@@ -74,10 +88,10 @@ var backupCmd = &cobra.Command{
 			return nil
 		}
 
-		backends := Profile.Backends
+		backends := prof.Backends
 
-		if name, err := cmd.Flags().GetString("backend"); err != nil {
-			b, err := Profile.Backend(name)
+		if name, err := cmd.Flags().GetString("backend"); err == nil {
+			b, err := prof.Backend(name)
 
 			if err != nil {
 				return err
@@ -89,7 +103,7 @@ var backupCmd = &cobra.Command{
 		for _, b := range backends {
 			sugar.Infow("Start backup", "backend", b.Name)
 
-			for _, s := range Profile.Stages {
+			for _, s := range prof.Stages {
 				sugar.Infow("Start backup stage", "backend", b.Name, "stage", s.Command)
 				logWriterInfo.Fields = []string{"backend", b.Name, "stage", s.Command}
 				logWriterError.Fields = logWriterInfo.Fields

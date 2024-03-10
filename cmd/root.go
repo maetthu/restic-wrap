@@ -9,32 +9,29 @@ import (
 	"github.com/spf13/viper"
 )
 
-var p string
-var Profile profile.Profile
-
 func init() {
-	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVarP(&p, "profile", "p", "", "Path to profile.yaml")
+	rootCmd.PersistentFlags().StringP("profile", "p", "", "Path to profile.yaml")
 	rootCmd.PersistentFlags().StringP("backend", "b", "", "Backend to use (depending on the command, either the first one or all are used by default)")
 
-	rootCmd.MarkFlagFilename("profile")
-	rootCmd.MarkFlagRequired("profile")
+	_ = rootCmd.MarkPersistentFlagFilename("profile")
+	_ = rootCmd.MarkPersistentFlagRequired("profile")
 }
 
-func initConfig() {
-	viper.SetConfigFile(p)
+func initConfig(profilePath string) (profile.Profile, error) {
+	viper.SetConfigFile(profilePath)
 
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println("Can't read config:", err)
-		os.Exit(1)
+		return profile.Profile{}, err
 	}
 
-	err := viper.Unmarshal(&Profile)
+	p := profile.Profile{}
+	err := viper.Unmarshal(&p)
 
 	if err != nil {
-		fmt.Println("Can't read config:", err)
-		os.Exit(1)
+		return profile.Profile{}, err
 	}
+
+	return p, nil
 }
 
 var rootCmd = &cobra.Command{
