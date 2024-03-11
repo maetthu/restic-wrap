@@ -90,7 +90,7 @@ var backupCmd = &cobra.Command{
 
 		backends := prof.Backends
 
-		if name, err := cmd.Flags().GetString("backend"); err == nil {
+		if name, err := cmd.Flags().GetString("backend"); err == nil && name != "" {
 			b, err := prof.Backend(name)
 
 			if err != nil {

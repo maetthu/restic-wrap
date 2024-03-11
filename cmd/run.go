@@ -30,7 +30,7 @@ var runCmd = &cobra.Command{
 		restic := exec.Command("restic", args...)
 		backend := prof.Backends[0]
 
-		if b, err := cmd.Flags().GetString("backend"); err == nil {
+		if b, err := cmd.Flags().GetString("backend"); err == nil && b != "" {
 			backend, err = prof.Backend(b)
 
 			if err != nil {
